@@ -1,7 +1,7 @@
 #ifndef HASTE_WRITER_HPP
 #define HASTE_WRITER_HPP
 
-#include <reckless>
+#include <reckless/writer.hpp>
 
 namespace haste {
 

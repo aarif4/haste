@@ -100,19 +100,20 @@ namespace haste {
 #if defined(__unix__)
 std::size_t haste_writer::write(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept
 {
-    std::size_t file_cnt =   ::write_to_file(pbuffer, count, ec);
-    std::size_t stderr_cnt = ::write_to_stderr(pbuffer, count, ec);
+    std::size_t cnt;
+    cnt = this->write_to_ptr(pbuffer, count, ec, stderr_);
+    cnt = this->write_to_ptr(pbuffer, count, ec, fd_);
     
-    return file_cnt;
+    return cnt;
 }
 
-std::size_t haste_writer::write_to_file(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept
+std::size_t haste_writer::write_to_ptr(void const* pbuffer, std::size_t count, std::error_code& ec, int fd) noexcept
 {
     char const* p = static_cast<char const*>(pbuffer);
     char const* pend = p + count;
     ec.clear();
     while(p != pend) {
-        ssize_t written = ::write_to_file(fd_, p, count);
+        ssize_t written = ::write(fd, p, count);
         if(written == -1) {
             if(errno != EINTR) {
                 ec.assign(errno, get_error_category());
@@ -124,41 +125,22 @@ std::size_t haste_writer::write_to_file(void const* pbuffer, std::size_t count, 
     }
     return p - static_cast<char const*>(pbuffer);
 }
-
-std::size_t haste_writer::write_to_stderr(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept
-{
-    char const* p = static_cast<char const*>(pbuffer);
-    char const* pend = p + count;
-    ec.clear();
-    while(p != pend) {
-        ssize_t written = ::write_to_stderr(stderr_, p, count);
-        if(written == -1) {
-            if(errno != EINTR) {
-                ec.assign(errno, get_error_category());
-                break;
-            }
-        } else {
-            p += written;
-        }
-    }
-    return p - static_cast<char const*>(pbuffer);
-}
-
 
 #elif defined(_WIN32)
 std::size_t haste_writer::write(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept
 {
-    std::size_t file_cnt =   ::write_to_file(pbuffer, count, ec);
-    std::size_t stderr_cnt = ::write_to_stderr(pbuffer, count, ec);
+    std::size_t cnt;
+    cnt = this->write_to_ptr(pbuffer, count, ec, stderr_);
+    cnt = this->write_to_ptr(pbuffer, count, ec, handle_);
 
-    return file_cnt;
+    return cnt;
 }
 
-std::size_t haste_writer::write_to_file(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept
+std::size_t haste_writer::write_to_ptr(void const* pbuffer, std::size_t count, std::error_code& ec, void* fd) noexcept
 {
     DWORD written;
     assert(count < std::numeric_limits<DWORD>::max());
-    if(WriteFile(handle_, pbuffer, static_cast<DWORD>(count), &written, NULL)) {
+    if(WriteFile(fd, pbuffer, static_cast<DWORD>(count), &written, NULL)) {
         assert(written == count);
         ec.clear();
         return count;
@@ -168,22 +150,6 @@ std::size_t haste_writer::write_to_file(void const* pbuffer, std::size_t count, 
         return written;
     }
 }
-
-std::size_t haste_writer::write_to_stderr(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept
-{
-    DWORD written;
-    assert(count < std::numeric_limits<DWORD>::max());
-    if(WriteFile(stderr_, pbuffer, static_cast<DWORD>(count), &written, NULL)) {
-        assert(written == count);
-        ec.clear();
-        return count;
-    } else {
-        int err = GetLastError();
-        ec.assign(err, get_error_category());
-        return written;
-    }
-}
-
 #endif
 
 }   // namespace haste

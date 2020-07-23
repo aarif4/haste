@@ -5,7 +5,7 @@
 
 namespace haste {
 
-class haste_writer : public writer {
+class haste_writer : public reckless::writer {
 public:
 #if defined(__unix__)
     haste_writer(int fd, bool stderr_fd) : fd_(fd), stderr_(stderr_fd) {}
@@ -24,9 +24,11 @@ public:
 #endif
 
 private:
-    std::size_t write_to_file(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept override;
-    std::size_t write_to_stderr(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept override;
-
+#if defined(__unix__)
+    std::size_t write_to_ptr(void const* pbuffer, std::size_t count, std::error_code& ec, int fd) noexcept;
+#elif defined(_WIN32)
+    std::size_t write_to_ptr(void const* pbuffer, std::size_t count, std::error_code& ec, void* fd) noexcept;
+#endif
 };
 
 }   // namespace haste

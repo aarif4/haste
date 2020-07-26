@@ -100,20 +100,37 @@ namespace haste {
 #if defined(__unix__)
 std::size_t haste_writer::write(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept
 {
-    std::size_t cnt;
-    cnt = this->write_to_ptr(pbuffer, count, ec, stderr_);
-    cnt = this->write_to_ptr(pbuffer, count, ec, fd_);
+    std::size_t cnt = 0;
+    for (uint32_t i=0; i<this->fd_.size(); i++)
+    {
+        cnt = this->write_to_idx(pbuffer, count, ec, fd_[i]);
+    }
     
     return cnt;
 }
 
-std::size_t haste_writer::write_to_ptr(void const* pbuffer, std::size_t count, std::error_code& ec, int fd) noexcept
+
+#elif defined(_WIN32)
+std::size_t haste_writer::write(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept
 {
+    std::size_t cnt = 0;
+    for (uint32_t i=0; i<this->handle_.size(); i++)
+    {
+        cnt = this->write_to_idx(pbuffer, count, ec, handle_[i]);
+    }
+
+    return cnt;
+}
+#endif
+
+std::size_t haste_writer::write_to_idx(void const* pbuffer, std::size_t count, std::error_code& ec, uint32_t idx) noexcept
+{
+#if defined(__unix__)
     char const* p = static_cast<char const*>(pbuffer);
     char const* pend = p + count;
     ec.clear();
     while(p != pend) {
-        ssize_t written = ::write(fd, p, count);
+        ssize_t written = ::write(this->fd_[idx], p, count);
         if(written == -1) {
             if(errno != EINTR) {
                 ec.assign(errno, get_error_category());
@@ -124,23 +141,10 @@ std::size_t haste_writer::write_to_ptr(void const* pbuffer, std::size_t count, s
         }
     }
     return p - static_cast<char const*>(pbuffer);
-}
-
 #elif defined(_WIN32)
-std::size_t haste_writer::write(void const* pbuffer, std::size_t count, std::error_code& ec) noexcept
-{
-    std::size_t cnt;
-    cnt = this->write_to_ptr(pbuffer, count, ec, stderr_);
-    cnt = this->write_to_ptr(pbuffer, count, ec, handle_);
-
-    return cnt;
-}
-
-std::size_t haste_writer::write_to_ptr(void const* pbuffer, std::size_t count, std::error_code& ec, void* fd) noexcept
-{
     DWORD written;
     assert(count < std::numeric_limits<DWORD>::max());
-    if(WriteFile(fd, pbuffer, static_cast<DWORD>(count), &written, NULL)) {
+    if(WriteFile(this->handle_[idx], pbuffer, static_cast<DWORD>(count), &written, NULL)) {
         assert(written == count);
         ec.clear();
         return count;
@@ -149,7 +153,7 @@ std::size_t haste_writer::write_to_ptr(void const* pbuffer, std::size_t count, s
         ec.assign(err, get_error_category());
         return written;
     }
-}
 #endif
+}
 
 }   // namespace haste

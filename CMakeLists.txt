@@ -8,6 +8,6 @@ add_subdirectory(lib/reckless)
 
 include_directories(inc ${CMAKE_BINARY_DIR}/lib)
 
-add_library(haste SHARED src/haste_writer.cpp)
+add_library(haste SHARED src/haste_writer.cpp src/haste.cpp)
 target_link_libraries(haste reckless)
 

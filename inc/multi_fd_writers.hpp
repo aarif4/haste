@@ -1,7 +1,7 @@
 #ifndef HASTE_HASTE_HPP
 #define HASTE_HASTE_HPP
 
-#include "haste_writer.hpp"
+#include "fd_writers.hpp"
 #include <vector>
 
 namespace haste {
